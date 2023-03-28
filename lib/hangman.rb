@@ -58,14 +58,12 @@ end
 # so far. The method uses the `match_letters` helper method to update
 # a progress array with correctly guessed letters.
 module DisplayProgress
-  def display_progress(word, guess)
-    progress = []
-    word.length.times do
-      progress << '_'
-    end
+  def display_progress(word, guess, progress)
+
     match_letters(guess, word, progress)
 
     puts progress.join
+    progress
   end
 
   def match_letters(guess, word, progress_array)
@@ -82,9 +80,20 @@ class Game
 
   def initialize
     @secret_word = generate_secret_word
-    @player_input = get_player_input
-    display_progress(@secret_word, @player_input)
+    @progress = []
+    @secret_word.length.times do
+      @progress << '_'
+    end
+    @incorrect_guesses_left = 10
+  end
+
+  def run
+    until @incorrect_guesses_left.zero?
+      @player_input = get_player_input
+      display_progress(@secret_word, @player_input, @progress)
+      @incorrect_guesses_left -= 1
+    end
   end
 end
 
-Game.new
+Game.new.run
