@@ -70,6 +70,15 @@ module DisplayProgress
       progress_array[index] = letter if letter == guess
     end
   end
+
+  def no_matches?(guess, word)
+    matches = 0
+    word.chars.each do |letter|
+      matches += 1 if letter == guess
+    end
+
+    matches.zero?
+  end
 end
 
 # This module provides methods for declaring the outcome of a hangman game.
@@ -82,12 +91,10 @@ module WinLossDeclaration
     puts 'You win! You’ve guessed the word.'
   end
 
-  def declare_loss
-    puts 'You lost! You couldn’t guess the word.'
+  def declare_loss(word)
+    puts "You lost! You couldn’t guess the word. The word was #{word}"
   end
 end
-
-module Serialization; end
 
 class Game
   include DisplayProgress
@@ -101,17 +108,18 @@ class Game
     @secret_word.length.times do
       @progress << '_'
     end
-    @incorrect_guesses_left = 15
+    @incorrect_guesses_left = 10
   end
 
   def run
     loop do
       @player_input = get_player_input
       display_progress(@secret_word, @player_input, @progress)
-      @incorrect_guesses_left -= 1
+      @incorrect_guesses_left -= 1 if no_matches?(@player_input, @secret_word)
+      puts @incorrect_guesses_left
       break declare_win if word_guessed?(@progress, @secret_word)
 
-      break declare_loss if @incorrect_guesses_left.zero?
+      break declare_loss(@secret_word) if @incorrect_guesses_left.zero?
     end
   end
 end
