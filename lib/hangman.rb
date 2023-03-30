@@ -41,6 +41,10 @@ module PlayerInputHandler
     true
   end
 
+  def add_guess(player_input, guessed_array)
+    guessed_array << player_input unless guessed_array.any?(player_input)
+  end
+
   def save_game_progress
     system('clear')
     puts "Feature has not been implemented yet.\n".red
@@ -88,11 +92,11 @@ module WinLossDeclaration
   end
 
   def declare_win
-    puts 'You win! You’ve guessed the word.'
+    puts 'You win! You’ve guessed the word.'.green
   end
 
   def declare_loss(word)
-    puts "You lost! You couldn’t guess the word. The word was #{word}"
+    puts "You lost! You couldn’t guess the word. The word was #{word}".red
   end
 end
 
@@ -109,14 +113,23 @@ class Game
       @progress << '_'
     end
     @incorrect_guesses_left = 10
+    @guessed = []
   end
 
   def run
     loop do
       @player_input = get_player_input
+      add_guess(@player_input, @guessed)
+      puts "You’ve guessed: #{@guessed.join(' ').blue}"
       display_progress(@secret_word, @player_input, @progress)
-      @incorrect_guesses_left -= 1 if no_matches?(@player_input, @secret_word)
-      puts @incorrect_guesses_left
+      if no_matches?(@player_input, @secret_word) && @guessed.any?(@player_input)
+        @incorrect_guesses_left -= 1
+      end
+      if @incorrect_guesses_left.between?(5, 10)
+        puts "\n#{@incorrect_guesses_left} incorrect guesses left.\n".green
+      else
+        puts "\n#{@incorrect_guesses_left} incorrect guesses left.\n".red
+      end
       break declare_win if word_guessed?(@progress, @secret_word)
 
       break declare_loss(@secret_word) if @incorrect_guesses_left.zero?
