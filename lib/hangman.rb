@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'colorize'
+require 'yaml'
 
 # This module provides a method for generating a secret word
 # by selecting a random word from a provided dictionary file.
@@ -22,7 +23,7 @@ end
 # The primary method is `get_player_input`,
 # which prompts the player to enter a letter or save their progress.
 module PlayerInputHandler
-  def get_player_input
+  def fetch_player_input
     puts "Enter a letter, or enter ‘save’ to save progress:\n"
     player_input = gets.chomp.downcase
 
@@ -31,7 +32,6 @@ module PlayerInputHandler
       puts "Enter a letter, or enter ‘save’ to save progress:\n"
       player_input = gets.chomp.downcase
     end
-    save_game_progress if player_input == 'save'
     player_input
   end
 
@@ -43,15 +43,6 @@ module PlayerInputHandler
 
   def add_guess(player_input, guessed_array)
     guessed_array << player_input unless guessed_array.any?(player_input)
-  end
-
-  def save_game_progress
-    system('clear')
-    puts "Feature has not been implemented yet.\n".red
-    get_player_input
-    # puts "Name your save file:\n"
-    # save_file_name = gets.chomp
-    # puts 'Game has been saved!'
   end
 end
 
@@ -118,21 +109,48 @@ class Game
 
   def run
     loop do
-      @player_input = get_player_input
-      add_guess(@player_input, @guessed)
-      puts "You’ve guessed: #{@guessed.join(' ').blue}"
-      display_progress(@secret_word, @player_input, @progress)
-      if no_matches?(@player_input, @secret_word) && @guessed.any?(@player_input)
-        @incorrect_guesses_left -= 1
-      end
-      if @incorrect_guesses_left.between?(5, 10)
-        puts "\n#{@incorrect_guesses_left} incorrect guesses left.\n".green
-      else
-        puts "\n#{@incorrect_guesses_left} incorrect guesses left.\n".red
+      @player_input = fetch_player_input
+      save_game if @player_input == 'save'
+      if @player_input != 'save'
+        add_guess(@player_input, @guessed) unless @player_input == 'save'
+        puts "You’ve guessed: #{@guessed.join(' ').blue}"
+        display_progress(@secret_word, @player_input, @progress)
+        if no_matches?(@player_input, @secret_word) && @guessed.any?(@player_input)
+          @incorrect_guesses_left -= 1
+        end
+        if @incorrect_guesses_left.between?(5, 10)
+          unless @player_input == 'save'
+            puts "\n#{@incorrect_guesses_left} incorrect guesses left.\n".green
+          end
+        else
+          unless @player_input == 'save'
+            puts "\n#{@incorrect_guesses_left} incorrect guesses left.\n".red
+          end
+        end
       end
       break declare_win if word_guessed?(@progress, @secret_word)
 
       break declare_loss(@secret_word) if @incorrect_guesses_left.zero?
+    end
+  end
+
+  def save_game
+    print "\nName your save file: "
+    filename = gets.chomp
+    dump = YAML.dump(self)
+    return if filename.include?('.')
+
+    if File.exist?("saved/#{filename}.yaml")
+      puts "Would you like to overwrite #{filename}.yaml? [y/n]"
+      answer = gets.chomp
+      return if answer != 'y'
+
+      File.write("saved/#{filename}.yaml", dump)
+      puts 'File overwritten!'
+    else
+      File.new("saved/#{filename}.yaml", 'w')
+      File.write("saved/#{filename}.yaml", dump)
+      puts 'Game has been saved!'
     end
   end
 end
