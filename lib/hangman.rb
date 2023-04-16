@@ -32,11 +32,14 @@ module PlayerInputHandler
       puts "Enter a letter, or enter ‘save’ to save progress:\n"
       player_input = gets.chomp.downcase
     end
+
     player_input
   end
 
   def valid_player_input?(player_input)
-    return unless player_input.match?(/^[a-z]{1}$/) || player_input == 'save'
+    unless player_input.match?(/^[a-z]{1}$/) || player_input == 'save' || player_input == 'quit'
+      return
+    end
 
     true
   end
@@ -91,53 +94,11 @@ module WinLossDeclaration
   end
 end
 
-class Game
-  include DisplayProgress
-  include PlayerInputHandler
-  include DictionaryWordSelector
-  include WinLossDeclaration
-
-  def initialize
-    @secret_word = generate_secret_word
-    @progress = []
-    @secret_word.length.times do
-      @progress << '_'
-    end
-    @incorrect_guesses_left = 10
-    @guessed = []
-  end
-
-  def run
-    loop do
-      @player_input = fetch_player_input
-      save_game if @player_input == 'save'
-      if @player_input != 'save'
-        add_guess(@player_input, @guessed) unless @player_input == 'save'
-        puts "You’ve guessed: #{@guessed.join(' ').blue}"
-        display_progress(@secret_word, @player_input, @progress)
-        if no_matches?(@player_input, @secret_word) && @guessed.any?(@player_input)
-          @incorrect_guesses_left -= 1
-        end
-        if @incorrect_guesses_left.between?(5, 10)
-          unless @player_input == 'save'
-            puts "\n#{@incorrect_guesses_left} incorrect guesses left.\n".green
-          end
-        else
-          unless @player_input == 'save'
-            puts "\n#{@incorrect_guesses_left} incorrect guesses left.\n".red
-          end
-        end
-      end
-      break declare_win if word_guessed?(@progress, @secret_word)
-
-      break declare_loss(@secret_word) if @incorrect_guesses_left.zero?
-    end
-  end
-
+module SaveLoadHandler
   def save_game
     print "\nName your save file: "
     filename = gets.chomp
-    dump = YAML.dump(self)
+    dump = save_to_yaml
     return if filename.include?('.')
 
     if File.exist?("saved/#{filename}.yaml")
@@ -153,6 +114,109 @@ class Game
       puts 'Game has been saved!'
     end
   end
+
+  def save_to_yaml
+    YAML.dump(
+      'secret_word' => @secret_word,
+      'progress' => @progress,
+      'incorrect_guesses_left' => @incorrect_guesses_left,
+      'guessed' => @guessed
+    )
+  end
+
+  def load_game
+    if Dir.glob('saved/*').empty?
+      system('clear')
+      puts 'No saved files to load.'.red
+      start_game
+    end
+
+    filename = select_game
+    file = YAML.load(File.read(filename.to_s))
+
+    @word = file['secret_word']
+    @progress = file['progress']
+    @incorrect_guesses_left = file['incorrect_guesses_left']
+    @guessed = file['guessed']
+
+    run
+  end
+
+  def select_game
+    saved_array = Dir.glob('saved/*')
+
+    puts "Select your saved game:\n"
+
+    saved_array.each_with_index do |file, index|
+      puts "[#{index + 1}] - #{file[6..]}"
+    end
+    puts "\n"
+    file_index = gets.chomp
+
+    saved_array[file_index.to_i - 1].to_s
+  end
 end
 
-Game.new.run
+class Game
+  include DisplayProgress
+  include PlayerInputHandler
+  include DictionaryWordSelector
+  include WinLossDeclaration
+  include SaveLoadHandler
+
+  attr_accessor :secret_word, :progress, :incorrect_guesses_left, :guessed
+
+  def initialize
+    @secret_word = generate_secret_word
+    @progress = []
+    @secret_word.length.times do
+      @progress << '_'
+    end
+    @incorrect_guesses_left = 10
+    @guessed = []
+    start_game
+  end
+
+  def start_game
+    loop do
+      puts "What would you like to do?\n[1] Create a new game\n[2] Load a saved game"
+      answer = gets.chomp
+      next unless %w[1 2].include?(answer)
+
+      case answer
+      when '1'
+        run
+      when '2'
+        load_game
+      end
+      break
+    end
+  end
+
+  def run
+    loop do
+      @player_input = fetch_player_input
+      save_game if @player_input == 'save'
+      next if @player_input == 'save'
+
+      add_guess(@player_input, @guessed) unless @guessed.include?(@player_input)
+      puts "You’ve guessed: #{@guessed.join(' ').blue}"
+      display_progress(@secret_word, @player_input, @progress)
+
+      if no_matches?(@player_input, @secret_word) && @guessed.any?(@player_input)
+        @incorrect_guesses_left -= 1
+      end
+
+      if @incorrect_guesses_left.between?(5, 10)
+        puts "\n#{@incorrect_guesses_left} incorrect guesses left.\n".green
+      else
+        puts "\n#{@incorrect_guesses_left} incorrect guesses left.\n".red
+      end
+
+      break declare_win if word_guessed?(@progress, @secret_word)
+      break declare_loss(@secret_word) if @incorrect_guesses_left.zero?
+    end
+  end
+end
+
+Game.new
