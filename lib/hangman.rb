@@ -99,6 +99,7 @@ module SaveLoadHandler
     print "\nName your save file: "
     filename = gets.chomp
     dump = save_to_yaml
+    puts save_to_yaml.class
     return if filename.include?('.')
 
     if File.exist?("saved/#{filename}.yaml")
@@ -132,12 +133,12 @@ module SaveLoadHandler
     end
 
     filename = select_game
-    file = YAML.load(File.read(filename.to_s))
+    file = YAML.safe_load(File.read(filename))
 
-    @word = file['secret_word']
-    @progress = file['progress']
-    @incorrect_guesses_left = file['incorrect_guesses_left']
-    @guessed = file['guessed']
+    self.secret_word = file['secret_word']
+    self.guessed = file['guessed']
+    self.incorrect_guesses_left = file['incorrect_guesses_left']
+    self.progress = file['progress']
 
     run
   end
