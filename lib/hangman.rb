@@ -100,7 +100,6 @@ module SaveLoadHandler
     print "\nName your save file: "
     filename = gets.chomp
     dump = save_to_yaml
-    puts save_to_yaml.class
     return if filename.include?('.')
 
     if File.exist?("saved/#{filename}.yaml")
@@ -143,7 +142,6 @@ module SaveLoadHandler
 
     display_variables
     run
-    puts 'Game loaded!'
   end
 
   def select_game
