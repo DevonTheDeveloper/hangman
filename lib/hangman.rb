@@ -94,6 +94,7 @@ module WinLossDeclaration
   end
 end
 
+# This module provides methods to handle the saving and loading of a game in YAML format.
 module SaveLoadHandler
   def save_game
     print "\nName your save file: "
@@ -140,7 +141,9 @@ module SaveLoadHandler
     self.incorrect_guesses_left = file['incorrect_guesses_left']
     self.progress = file['progress']
 
+    display_variables
     run
+    puts 'Game loaded!'
   end
 
   def select_game
@@ -152,12 +155,17 @@ module SaveLoadHandler
       puts "[#{index + 1}] - #{file[6..]}"
     end
     puts "\n"
-    file_index = gets.chomp
+    file_index = gets.chomp.to_i
 
-    saved_array[file_index.to_i - 1].to_s
+    return unless file_index.is_a? Integer
+
+    saved_array[file_index - 1].to_s
   end
 end
 
+# This class represents a Hangman game. It includes modules for displaying progress,
+# handling player input, selecting a secret word from a dictionary,
+# and handling win/loss declaration and saving/loading of the game state.
 class Game
   include DisplayProgress
   include PlayerInputHandler
@@ -194,6 +202,17 @@ class Game
     end
   end
 
+  def display_variables
+    puts "You’ve guessed: #{@guessed.join(' ').blue}"
+    display_progress(@secret_word, @player_input, @progress)
+
+    if @incorrect_guesses_left.between?(5, 10)
+      puts "\n#{@incorrect_guesses_left} incorrect guesses left.\n".green
+    else
+      puts "\n#{@incorrect_guesses_left} incorrect guesses left.\n".red
+    end
+  end
+
   def run
     loop do
       @player_input = fetch_player_input
@@ -201,18 +220,12 @@ class Game
       next if @player_input == 'save'
 
       add_guess(@player_input, @guessed) unless @guessed.include?(@player_input)
-      puts "You’ve guessed: #{@guessed.join(' ').blue}"
-      display_progress(@secret_word, @player_input, @progress)
 
       if no_matches?(@player_input, @secret_word) && @guessed.any?(@player_input)
         @incorrect_guesses_left -= 1
       end
 
-      if @incorrect_guesses_left.between?(5, 10)
-        puts "\n#{@incorrect_guesses_left} incorrect guesses left.\n".green
-      else
-        puts "\n#{@incorrect_guesses_left} incorrect guesses left.\n".red
-      end
+      display_variables
 
       break declare_win if word_guessed?(@progress, @secret_word)
       break declare_loss(@secret_word) if @incorrect_guesses_left.zero?
